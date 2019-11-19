@@ -5,7 +5,7 @@
 
 trigger: none
 
-pool: default
+pool: Default
 
 steps:
 - script: echo Hello, world!
