@@ -8,5 +8,5 @@ trigger: none
 pool: Default
 
 steps:
-- publish: $(pipeline.workspace)/
+- publish: $(Pipeline.Workspace)/
   artifact: A1
