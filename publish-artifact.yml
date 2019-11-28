@@ -1,5 +1,5 @@
 pool:
-  name: Hosted
+  name: Default
 
 steps:
 - task: PublishBuildArtifacts@1
