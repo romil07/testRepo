@@ -1,0 +1,53 @@
+on: [push]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 'Checkout Github Action' 
+      uses: actions/checkout@master
+    
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: continuousdeploymenttemplatecontainerregistry.azurecr.io
+        username: ${{ secrets.acr_continuousdeploymenttemplatecontainerregistry_username }}
+        password: ${{ secrets.acr_continuousdeploymenttemplatecontainerregistry_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/NodejsWebApp1/" -f  "**/Dockerfile" -t continuousdeploymenttemplatecontainerregistry.azurecr.io/continuousdeploymenttemplatelinuxcontainerapp-img:${{ github.sha }}
+        docker push continuousdeploymenttemplatecontainerregistry.azurecr.io/continuousdeploymenttemplatelinuxcontainerapp-img:${{ github.sha }}
+
+    - name: Set Web App ACR authentication
+      uses: Azure/appservice-settings@v1
+      with: 
+        app-name: ContinuousDeploymentTemplate-LinuxContainerApp
+        app-settings-json: | 
+          [
+            {
+              "name": "DOCKER_REGISTRY_SERVER_URL",
+              "value": "continuousdeploymenttemplatecontainerregistry.azurecr.io",
+              "slotSetting": false
+            },
+            {
+              "name": "DOCKER_REGISTRY_SERVER_USERNAME",
+              "value": "${{ secrets.acr_continuousdeploymenttemplatecontainerregistry_username }}",
+              "slotSetting": false
+            },
+            {
+              "name": "DOCKER_REGISTRY_SERVER_PASSWORD",
+              "value": "${{ secrets.acr_continuousdeploymenttemplatecontainerregistry_password }}",
+              "slotSetting": false
+            }            
+          ]
+      
+    - uses: azure/webapps-deploy@v2
+      with:
+        app-name: ContinuousDeploymentTemplate-LinuxContainerApp
+        images: continuousdeploymenttemplatecontainerregistry.azurecr.io/continuousdeploymenttemplatelinuxcontainerapp-img:${{ github.sha }}
