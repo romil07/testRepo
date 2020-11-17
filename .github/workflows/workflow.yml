@@ -9,7 +9,7 @@ jobs:
     - uses: Azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }} 
-    - uses: Azure/get-keyvault-secrets@v1.0
+    - uses: Azure/get-keyvault-secrets@v1
       with:
         keyvault: "rogoyal-keyVault"
         secrets: 'testSecret'  # comma separated list of secret keys that need to be fetched from the Key Vault 
