@@ -1,6 +1,6 @@
 on: [push]
 env:
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true' #test
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
 jobs:
   build:
