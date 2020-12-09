@@ -1,0 +1,126 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    name: A job to use action to run Azure Image Builder Action
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - shell: bash
+      run: |
+        mkdir -p workflow-artifacts
+        echo Hello world 1! > workflow-artifacts/hello-world.txt 
+        mkdir -p workflow-artifacts
+        mkdir -p workflow-artifacts/homework
+        echo Hello world 1! > workflow-artifacts/homework/hello-world.txt 
+        echo Hello world 2 > workflow-artifacts/homework/hello-world2.txt 
+        echo '{
+              "type": "Microsoft.VirtualMachineImages/imageTemplates",
+              "location": "chinanorth2",
+              "tags": {
+              "imagebuilderTemplate": "testfordistlocforsig",
+              "userIdentity": "enabled"
+              },
+              "identity": {
+                  "type": "UserAssigned",
+                  "userAssignedIdentities": {
+                      "/subscriptions/f34ea16c-7f65-41bc-84d5-37c9a0384572/resourceGroups/GitHubActions/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aibBuiUserId1607511960": {}
+                  }
+              },
+              "properties": {
+                  "buildTimeoutInMinutes": 80,
+                  "vmProfile": {
+                      "vmSize": "Standard_D1_v2",
+                      "osDiskSizeGB": 136
+                  },
+                  "source": {
+                      "type": "PlatformImage",
+                      "publisher": "Canonical",
+                      "offer": "UbuntuServer",
+                      "sku": "18.04-DAILY-LTS",
+                      "version": "latest"
+                  },
+              "customize": [
+                      {
+                          "type": "Shell",
+                          "name": "RunScriptFromSource",
+                          "scriptUri": "https://raw.githubusercontent.com/danielsollondon/azvmimagebuilder/master/quickquickstarts/customizeScript.sh"
+                      },
+                      {
+                          "type": "Shell",
+                          "name": "CheckSumCompareShellScript",
+                          "scriptUri": "https://raw.githubusercontent.com/danielsollondon/azvmimagebuilder/master/quickquickstarts/customizeScript2.sh",
+                          "sha256Checksum": "ade4c5214c3c675e92c66e2d067a870c5b81b9844b3de3cc72c49ff36425fc93"
+                      },
+                      {
+                          "type": "File",
+                          "name": "downloadBuildArtifacts",
+                          "sourceUri": "https://raw.githubusercontent.com/danielsollondon/azvmimagebuilder/master/quickquickstarts/exampleArtifacts/buildArtifacts/index.html",
+                          "destination": "/tmp/index.html"
+                      },
+                      {
+                          "type": "Shell",
+                          "name": "setupBuildPath",
+                          "inline": [
+                              "sudo mkdir -p /buildArtifacts",
+                              "sudo cp /tmp/index.html /buildArtifacts/index.html"
+                          ]
+                      },
+                      {
+                          "type": "Shell",
+                          "name": "InstallUpgrades",
+                          "inline": [
+                              "sudo apt install unattended-upgrades"
+                          ]
+                      }
+                  ],
+                  "distribute": [
+                      {
+                          "type": "SharedImage",
+                          "galleryImageId": "/subscriptions/f34ea16c-7f65-41bc-84d5-37c9a0384572/resourceGroups/GitHubActions/providers/Microsoft.Compute/galleries/rogoyalsig/images/imgdefnlin",
+                          "runOutputName": "",
+                          "artifactTags": {
+                              "source": "azureVmImageBuilder",
+                              "baseosimg": "ubuntu1804"
+                          },
+                          "replicationRegions": [
+                              "eastus"
+                          ]
+                      }
+                  ]
+              }
+            }' > workflow-artifacts/homework/template.json
+    - uses: azure/login@releases/azcloud-v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_CHINA }}
+        environment: 'AzureChinaCloud'
+        
+    - name: Azure Image Builder Action
+      id: aib
+      #uses: ./
+      uses: azure/build-vm-image@v0
+      with:
+        location: 'chinanorth2'
+        resource-group-name: 'GitHubActions'
+        #managed-identity: '/subscriptions/f34ea16c-7f65-41bc-84d5-37c9a0384572/resourcegroups/GitHubActions/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aibBuiUserId1607511960'
+        managed-identity: 'aibBuiUserId1607511960'
+        source-os-type: 'linux'
+        source-image: Canonical:UbuntuServer:18.04-DAILY-LTS:latest
+        customizer-script: |
+          sudo mkdir -p /buildartifacts
+          sudo cp -r /tmp/workflow-artifacts/ /buildartifacts/
+        customizer-windows-Update: 'true'
+        dist-image-tags: 'dis1:tag1,dist2:tag2'
+    - name: Azure Image Builder Action Output
+      run: |
+          echo ${{ steps.aib.outputs.imagebuilder-run-status }} 
+          echo ${{ steps.aib.outputs.custom-image-uri }}
